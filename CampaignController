@@ -1,0 +1,505 @@
+/**
+* @File Name : CampaignController.cls
+* @Description :
+* @Author :
+* @Last Modified By :
+* @Last Modified On : July 10, 2025
+* @Modification Log :
+*==============================================================================
+* Ver | Date | Author | Modification
+*==============================================================================
+* 1.0 | July 10, 2025 |   | Initial Version
+**/
+
+public without sharing class CampaignController {
+    
+    public class CampaignWrapper {
+        @AuraEnabled public Id Id;
+        @AuraEnabled public String Name;
+        @AuraEnabled public String StartDate;
+        @AuraEnabled public String StartDateCustom;
+        @AuraEnabled public String ImageUrl;
+		@AuraEnabled public String Description;
+        @AuraEnabled public String BriefDescription;
+        @AuraEnabled public String PaymentStatus;
+        @AuraEnabled public String portalImageLink;
+         @AuraEnabled public String EventTags;
+ @AuraEnabled public List<String> ImageUrls;    
+       @AuraEnabled public String City { get; set; }
+       @AuraEnabled public String State { get; set; }
+        @AuraEnabled public Datetime startDateTime {get; set;}
+       @AuraEnabled public Datetime endDateTime {get; set;}
+       @AuraEnabled public String timeZone {get; set;}
+       @AuraEnabled public String CountryCode { get; set; }
+       @AuraEnabled public String FullAddress {get;set;}
+       @AuraEnabled public Integer totalCount { get; set; }
+       @AuraEnabled public List<CampaignWrapper> records { get; set; }
+       @AuraEnabled public String PostalCode { get; set; }
+       @AuraEnabled public String StateCode { get; set; }
+       @AuraEnabled public String Street { get; set; }
+     // @AuraEnabled public List<FileWrapper> Files { get; set; }
+
+        public CampaignWrapper(Custom_Event__c camp) {
+            System.debug('>>> Timezonecamp: ' + camp);
+            this.Id = camp.Id;
+            this.Name = camp.Name;
+			 this.Name = camp.Name;
+             this.portalImageLink = camp.portal_Image_Link__c;
+             this.startDateTime = camp.Event_starts_on__c;
+            this.endDateTime = camp.Event_ends_on__c;
+            this.timeZone = camp.Time_Zone__c;
+            this.EventTags = camp.Event_Tags__c;
+            this.Description = String.valueOf(camp.Full_Description__c);
+            this.BriefDescription = String.valueOf(camp.Brief_Description__c);
+           // this.ImageUrl = extractImageUrl(camp.Image__c);
+           
+            this.PaymentStatus = camp.Payment_Status__c;
+            this.StartDate = camp.Start_Date__c.format();
+            this.StartDateCustom = String.valueOf(camp.Start_Date__c);
+            //this.Type = camp.Type;
+            this.Street = camp.Address__Street__s;
+            this.City = camp.Address__City__s;
+            this.StateCode = camp.Address__StateCode__s;
+            this.PostalCode = camp.Address__PostalCode__s;
+            this.CountryCode = camp.Address__CountryCode__s;  // or toLabel()
+            //this.FullAddress = City + ', ' + State + ', ' + Country;
+             if (!String.isBlank(City) || !String.isBlank(StateCode) || !String.isBlank(CountryCode)) {
+                FullAddress =
+                    (City != null ? City : '') +
+                    (StateCode != null ? ', ' + StateCode : '') +
+                    (CountryCode != null ? ', ' + CountryCode : '');
+            } else {
+                FullAddress = null;
+            }
+               this.ImageUrls = new List<String>();
+if (camp.ContentDocumentLinks != null && !camp.ContentDocumentLinks.isEmpty()) {
+    for (ContentDocumentLink link : camp.ContentDocumentLinks) {
+        if (link.ContentDocument != null && link.ContentDocument.LatestPublishedVersionId != null) {
+            String url = '/sfc/servlet.shepherd/version/download/' + link.ContentDocument.LatestPublishedVersionId;
+            this.ImageUrls.add(url);
+        }
+    }
+}
+            this.ImageUrl = this.ImageUrls.isEmpty() ? null : this.ImageUrls[0];
+            System.debug(' Campaign: ' + Name + ' | FullAddress = ' + FullAddress);
+             System.debug(' Campaign: ' + Name + ' | FullAddress = ' +  this.ImageUrl);
+
+             System.debug('>>> StartDateTime: ' + this.StartDateTime);
+        System.debug('>>> EndDateTime: ' + this.EndDateTime);
+        System.debug('>>> Timezone: ' + this.Timezone);
+
+        }
+
+       
+
+        private String extractImageUrl(String html) {
+            System.debug('Original HTML in Image__c: ' + html);
+            if (String.isNotBlank(html)) {
+                Integer start = html.indexOf('src="') + 5;
+                Integer end1 = html.indexOf('"', start);
+                System.debug('Start index of src: ' + start);
+                System.debug('End index of src: ' + end1);
+                if (start > 4 && end1 > start) {
+                    String rawUrl = html.substring(start, end1);
+                    System.debug('Extracted raw URL: ' + rawUrl);
+                    String cleanUrl = rawUrl.replace('&amp;', '&');
+                    System.debug('Cleaned URL: ' + cleanUrl);
+                    return cleanUrl;
+                } else {
+                    System.debug('Invalid indices for src extraction.');
+                }
+            } else {
+                System.debug('Image__c is blank or null.');
+            }
+            return null;
+        }
+    }
+
+    public class CampaignResponse {
+        @AuraEnabled public Integer totalCount { get; set; }
+        @AuraEnabled public List<CampaignWrapper> records { get; set; }
+        
+        public CampaignResponse(Integer totalCount, List<CampaignWrapper> records) {
+            this.totalCount = totalCount;
+            this.records = records;
+        }
+    }
+     @AuraEnabled(cacheable=true)
+    public static List<DropdownOption> getCustomMetadataOptions() {
+        List<DropdownOption> locationOptions = new List<DropdownOption>();
+
+        // Replace My_Metadata__mdt with your Custom Metadata API name
+        for (City_Country_Mapping__mdt meta : [
+            SELECT MasterLabel, DeveloperName,City__c,Country__c
+            FROM City_Country_Mapping__mdt
+            ORDER BY MasterLabel
+        ]) {
+            locationOptions.add(new DropdownOption(meta.MasterLabel, meta.DeveloperName));
+        }
+
+        return locationOptions;
+    }
+
+   
+
+    // Wrapper for Lightning Combobox
+    public class DropdownOption {
+        @AuraEnabled public String label { get; set; }
+        @AuraEnabled public String value { get; set; }
+
+        public DropdownOption(String label, String value) {
+            this.label = label;
+            this.value = value;
+        }
+    }
+
+    @AuraEnabled(cacheable=true)
+public static List<String> getCampaignTypes() {
+    List<AggregateResult> results = [
+        SELECT Type__c FROM Custom_Event__c WHERE Type__c != null GROUP BY Type__c
+    ];
+    List<String> types = new List<String>();
+    for (AggregateResult ar : results) {
+        types.add((String) ar.get('Type__c'));
+    }
+    return types;
+}
+
+// public CampaignResponse(Integer totalCount, List<CampaignWrapper> records) {
+//         this.totalCount = totalCount;
+//         this.records = records;
+//     }
+
+
+// @AuraEnabled(cacheable=true)
+// public static CampaignResponse getCampaignsByType(String typeValue, String selectedChapter , String countryLocation, String cityLocation, Integer pageSize, Integer pageNumber) {
+//      List<CampaignWrapper> result = new List<CampaignWrapper>();
+//      Integer totalCount = 0;
+//      Integer offsetValue = (pageNumber - 1) * pageSize;
+//     if(String.isNotBlank(typeValue) && String.isNotBlank(selectedChapter) && String.isNotBlank(cityLocation)){
+
+//     List<Custom_Event__c> campaigns = [
+//         SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c, Chapter__c,Address__City__s, toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s),Brief_Description__c, Payment_Status__c, Type__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLinks)
+//         FROM Custom_Event__c
+//         WHERE Type__c = :typeValue AND Chapter__c = :selectedChapter AND Address__City__s = :cityLocation LIMIT :pageSize OFFSET :offsetValue
+//     ];
+
+//     totalCount = campaigns.size();
+//     System.debug('Total Records Found: ' + totalCount);
+//     for (Custom_Event__c c : campaigns) {
+//         result.add(new CampaignWrapper(c));
+//     }
+//     }
+//     else if(String.isNotBlank(typeValue) && String.isBlank(selectedChapter) && String.isBlank(cityLocation)){
+//         List<Custom_Event__c> campaigns = [
+//         SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,Chapter__c,Address__City__s, Brief_Description__c,toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s),Payment_Status__c, Type__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLinks)
+//         FROM Custom_Event__c
+//         WHERE Type__c = :typeValue LIMIT :pageSize OFFSET :offsetValue
+//     ];
+//     totalCount = campaigns.size();
+//     System.debug('Total Records Found Type ' + totalCount);
+//     System.debug('typeValue ' + typeValue);
+//     System.System.debug('pageSize' + pageSize);
+//     System.System.debug('offsetValue' + offsetValue);
+
+
+//     for (Custom_Event__c c : campaigns) {
+//         result.add(new CampaignWrapper(c));
+//     }
+//      System.debug('result'+ result);
+//     }
+//     else if(String.isBlank(typeValue) && String.isNotBlank(selectedChapter) && String.isBlank(cityLocation)){
+//         List<Custom_Event__c> campaigns = [
+//         SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,Chapter__c,Address__City__s,toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s), Brief_Description__c, Payment_Status__c, Type__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLinks)
+//         FROM Custom_Event__c
+//         WHERE Chapter__c = :selectedChapter LIMIT :pageSize OFFSET :offsetValue
+//     ];
+//     totalCount = campaigns.size();
+//     for (Custom_Event__c c : campaigns) {
+//         result.add(new CampaignWrapper(c));
+//     }
+    
+//     }
+//     else if(String.isBlank(typeValue) && String.isBlank(selectedChapter) && String.isNotBlank(cityLocation)){
+//         List<Custom_Event__c> campaigns = [
+//         SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,Chapter__c,Address__City__s,toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s), Brief_Description__c, Payment_Status__c, Type__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLinks)
+//         FROM Custom_Event__c
+//         WHERE Address__City__s = :cityLocation LIMIT :pageSize OFFSET :offsetValue
+//     ];
+//     totalCount = campaigns.size();
+//     for (Custom_Event__c c : campaigns) {
+//         result.add(new CampaignWrapper(c));
+//     }
+    
+//     }
+//     else if(String.isNotBlank(typeValue) && String.isNotBlank(selectedChapter) && String.isBlank(cityLocation)){
+//         List<Custom_Event__c> campaigns = [
+//         SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,Chapter__c,Address__City__s,toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s),Brief_Description__c, Payment_Status__c, Type__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLinks)
+//         FROM Custom_Event__c
+//         WHERE Type__c = :typeValue AND Chapter__c = :selectedChapter LIMIT :pageSize OFFSET :offsetValue
+//     ];
+//     totalCount = campaigns.size();
+//     for (Custom_Event__c c : campaigns) {
+//         result.add(new CampaignWrapper(c));
+//     }
+    
+//     }
+//     else if(String.isNotBlank(typeValue) && String.isBlank(selectedChapter) && String.isNotBlank(cityLocation)){
+//         List<Custom_Event__c> campaigns = [
+//         SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,Chapter__c,Address__City__s, toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s),Brief_Description__c, Payment_Status__c, Type__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLinks)
+//         FROM Custom_Event__c
+//         WHERE Type__c = :typeValue AND Address__City__s = :cityLocation LIMIT :pageSize OFFSET :offsetValue
+//     ];
+//     totalCount = campaigns.size();
+//     for (Custom_Event__c c : campaigns) {
+//         result.add(new CampaignWrapper(c));
+//     }
+    
+//     }
+//     else if(String.isBlank(typeValue) && String.isNotBlank(selectedChapter) && String.isNotBlank(cityLocation)){
+//         List<Custom_Event__c> campaigns = [
+//         SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,Chapter__c,Address__City__s,toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s), Brief_Description__c, Payment_Status__c, Type__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLinks)
+//         FROM Custom_Event__c
+//         WHERE Chapter__c = :selectedChapter AND Address__City__s = :cityLocation LIMIT :pageSize OFFSET :offsetValue
+//     ];
+//     totalCount = campaigns.size();
+//     for (Custom_Event__c c : campaigns) {
+//         result.add(new CampaignWrapper(c));
+//     }
+    
+//     }
+//     else{
+    
+//     }
+//     return new CampaignResponse(totalCount, result);
+//     //return result;
+// }
+@AuraEnabled(cacheable=true)
+public static CampaignResponse getCampaignsByType(
+    //String typeValue, 
+    List<String> selectedTags,
+    String selectedChapter, 
+    String countryLocation, 
+    String cityLocation, 
+    Integer pageSize, 
+    Integer pageNumber,
+    Boolean isPast,
+    Date selectedDate   // 🔹 new param for month+year filter
+) {
+    System.debug('selectedTags'+selectedTags);
+    List<CampaignWrapper> result = new List<CampaignWrapper>();
+    Integer offsetValue = (pageNumber - 1) * pageSize;
+
+    List<String> conditions = new List<String>();
+
+    // if(String.isNotBlank(typeValue)) {
+    //     conditions.add('Type__c = \'' + String.escapeSingleQuotes(typeValue) + '\'');
+    // }
+    if(selectedTags != null && !selectedTags.isEmpty()) {
+        List<String> tagConditions = new List<String>();
+        for(String t : selectedTags){
+            tagConditions.add('Event_Tags__c INCLUDES (\'' + String.escapeSingleQuotes(t) + '\')');
+        }
+        conditions.add('(' + String.join(tagConditions, ' OR ') + ')');
+    }
+    if(String.isNotBlank(selectedChapter)) {
+        conditions.add('Chapter__c = \'' + String.escapeSingleQuotes(selectedChapter) + '\'');
+    }
+    if(String.isNotBlank(cityLocation)) {
+        conditions.add('Address__City__s = \'' + String.escapeSingleQuotes(cityLocation) + '\'');
+    }
+
+    if(selectedDate != null) {
+        Integer selectedMonth = selectedDate.month();
+        Integer selectedYear  = selectedDate.year();
+        conditions.add('CALENDAR_MONTH(Event_starts_on__c) = ' + selectedMonth);
+        conditions.add('CALENDAR_YEAR(Event_starts_on__c) = ' + selectedYear);
+    }
+
+    // Upcoming or Past filter
+    if(isPast == true) {
+        conditions.add('Event_starts_on__c < TODAY');
+    } else {
+        conditions.add('Event_starts_on__c >= TODAY');
+    }
+
+    String whereClause = conditions.isEmpty() ? '' : ' WHERE ' + String.join(conditions, ' AND ');
+
+    // 🔹 Count query
+    String countQuery = 'SELECT COUNT() FROM Custom_Event__c ' + whereClause;
+    Integer totalCount = (Integer)Database.countQuery(countQuery);
+
+    // 🔹 Paginated query
+    String recordQuery = 
+        'SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c, Chapter__c, ' +
+        'Address__City__s,portal_Image_Link__c,Event_ends_on__c,Event_starts_on__c,Time_Zone__c, Address__Street__s,Address__PostalCode__s,toLabel(Address__StateCode__s), toLabel(Address__CountryCode__s), ' +
+        'Brief_Description__c, Payment_Status__c, Type__c, Event_Tags__c, ' +
+        '(SELECT Id, ContentDocumentId, ContentDocument.Title, ContentDocument.LatestPublishedVersionId ' +
+        ' FROM ContentDocumentLinks) ' +
+        'FROM Custom_Event__c ' + whereClause +
+        ' ORDER BY Event_starts_on__c ASC ' +
+        ' LIMIT ' + pageSize + ' OFFSET ' + offsetValue;
+
+    List<Custom_Event__c> campaigns = Database.query(recordQuery);
+
+    for (Custom_Event__c c : campaigns) {
+        result.add(new CampaignWrapper(c));
+    }
+
+    return new CampaignResponse(totalCount, result);
+}
+
+@AuraEnabled(cacheable=true)
+    public static List<Custom_Event__c> searchCampaigns(String searchKey) {
+        return [SELECT Id, Name, Image__c, Start_Date__c,Event_ends_on__c,Event_starts_on__c,Time_Zone__c,Event_Tags__c,Full_Description__c,Chapter__c,portal_Image_Link__c,Address__Street__s,Address__PostalCode__s,toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s),Address__City__s,Brief_Description__c,Payment_Status__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+        FROM ContentDocumentLinks) FROM Custom_Event__c WHERE Name LIKE :('%' + searchKey + '%') LIMIT 10];
+    }
+
+    // @AuraEnabled(cacheable=true)
+    // public static List<Chapter__c> getChapters(String searchChapter) {
+    //     return [SELECT Id, Name FROM Chapter__c WHERE Name LIKE :('%' + searchChapter + '%') LIMIT 10];
+    // }
+     @AuraEnabled(cacheable=true)
+    public static List<Chapter__c> getChapters() {
+        return [SELECT Id, Name FROM Chapter__c ORDER BY Name];
+    }
+
+    @AuraEnabled(cacheable=true)
+public static List<CampaignWrapper> getCampaignById(Id campaignId) {
+    List<CampaignWrapper> result = new List<CampaignWrapper>();
+
+    List<Custom_Event__c> campaigns = [
+        SELECT Id, Name, Image__c, Start_Date__c,Event_ends_on__c,Event_starts_on__c,Event_Tags__c,Time_Zone__c, Full_Description__c,portal_Image_Link__c,Address__Street__s,Address__PostalCode__s,toLabel(Address__StateCode__s),toLabel(Address__CountryCode__s), Address__City__s,Brief_Description__c, Payment_Status__c,(SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+        FROM ContentDocumentLinks)
+        FROM Custom_Event__c
+        WHERE Id = :campaignId
+    ];
+
+    for (Custom_Event__c c : campaigns) {
+        result.add(new CampaignWrapper(c));
+    }
+
+    return result;
+}
+
+ 
+//      public static String getFileImageUrl(Id campaignId) {
+//     String fileUrl;
+//     List<ContentDocumentLink> links = [
+//         SELECT ContentDocument.LatestPublishedVersionId
+//         FROM ContentDocumentLink
+//         WHERE LinkedEntityId = :campaignId
+//         LIMIT 1
+//     ];
+//     if (!links.isEmpty()) {
+//         String versionId = links[0].ContentDocument.LatestPublishedVersionId;
+//         fileUrl = URL.getOrgDomainUrl().toExternalForm() +
+//                   '/sfc/servlet.shepherd/version/renditionDownload?rendition=ORIGINAL_Jpg&versionId=' +
+//                   versionId;
+
+                  
+//     System.debug('fileUrl'+ fileUrl);
+//     }
+//     return fileUrl;
+// }
+
+
+    @AuraEnabled(cacheable=false)
+    public static List<CampaignWrapper> getEventCampaigns(Integer pageSize, Integer pageNumber) {
+        System.debug('pageSize Value => ' + pageSize);
+        Date today = Date.today();
+        Integer offsetValue = (pageNumber - 1) * pageSize; 
+       System.debug('Calculated Offset Value => ' + offsetValue);
+
+        List<Custom_Event__c> campaigns = [
+            SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,portal_Image_Link__c,
+                   Brief_Description__c, Payment_Status__c,Event_Tags__c,Event_ends_on__c,Event_starts_on__c,Time_Zone__c,Address__Street__s,Address__PostalCode__s,
+                   toLabel(Address__StateCode__s), toLabel(Address__CountryCode__s),
+                   Address__City__s,
+                   (SELECT Id, ContentDocumentId, ContentDocument.Title , ContentDocument.LatestPublishedVersionId
+                    FROM ContentDocumentLinks) 
+            FROM Custom_Event__c 
+            WHERE Event_starts_on__c >= :today 
+            ORDER BY Event_starts_on__c ASC 
+            LIMIT :pageSize OFFSET :offsetValue
+        ];
+
+        List<CampaignWrapper> result = new List<CampaignWrapper>();
+        for (Custom_Event__c c : campaigns) {
+            result.add(new CampaignWrapper(c));
+        }
+        return result;
+    }
+
+    @AuraEnabled(cacheable=false)
+    public static List<CampaignWrapper> getPastEventCampaigns(Integer pageSize, Integer pageNumber) {
+        Date today = Date.today();
+        Integer offsetValue = (pageNumber - 1) * pageSize;
+        System.debug('Calculated Offset Value => ' + offsetValue);
+        System.debug('pageNumber Offset Value => ' + pageNumber);
+        System.debug('pageSize Offset Value => ' + pageSize);
+
+        List<Custom_Event__c> campaigns = [
+            SELECT Id, Name, Image__c, Start_Date__c, Full_Description__c,
+                   Brief_Description__c, Payment_Status__c,Event_Tags__c,Event_ends_on__c,Event_starts_on__c,Time_Zone__c,Address__Street__s,Address__PostalCode__s,
+                   toLabel(Address__StateCode__s), toLabel(Address__CountryCode__s),portal_Image_Link__c,
+                   Address__City__s,
+                   (SELECT Id, ContentDocumentId, ContentDocument.Title, ContentDocument.LatestPublishedVersionId
+                    FROM ContentDocumentLinks)
+            FROM Custom_Event__c
+            WHERE Event_starts_on__c < :today
+            ORDER BY Event_starts_on__c DESC 
+            LIMIT :pageSize OFFSET :offsetValue
+        ];
+
+        List<CampaignWrapper> result = new List<CampaignWrapper>();
+        for (Custom_Event__c c : campaigns) {
+            result.add(new CampaignWrapper(c));
+        }
+        return result;
+    }
+
+    @AuraEnabled(cacheable=true)
+public static Integer getUpcomingCampaignsCount() {
+    Date today = Date.today();
+    return [SELECT COUNT() FROM Custom_Event__c WHERE Event_starts_on__c >= :today];
+}
+
+@AuraEnabled(cacheable=true)
+public static Integer getPastCampaignsCount() {
+    Date today = Date.today();
+    return [SELECT COUNT() FROM Custom_Event__c WHERE Event_starts_on__c <= :today];
+}
+
+    @AuraEnabled(cacheable=true)
+    public static List<CampaignWrapper> getEventDetailCampaigns() {
+        Date today = Date.today();
+        List<Custom_Event__c> campaigns = [
+             SELECT Id, Name, Image__c, Start_Date__c, Event_Tags__c,
+                   Event_ends_on__c, Event_starts_on__c, Time_Zone__c,
+                   Full_Description__c, Brief_Description__c, portal_Image_Link__c,
+                   Payment_Status__c,
+                   Address__Street__s, Address__City__s,  toLabel(Address__CountryCode__s),toLabel(Address__StateCode__s),
+                   Address__PostalCode__s, 
+                   (SELECT Id, ContentDocumentId, ContentDocument.Title, ContentDocument.LatestPublishedVersionId
+                    FROM ContentDocumentLinks)
+            FROM Custom_Event__c
+        ];
+        System.debug('Fetched ' + campaigns.size() + ' Campaigns');
+        //System.debug(Campaigns);
+
+        List<CampaignWrapper> result = new List<CampaignWrapper>();
+        for (Custom_Event__c c : campaigns) {
+            System.debug('Processing Campaign: ' + c.Name + ', Id: ' + c.Id);
+            result.add(new CampaignWrapper(c));
+        }
+        return result;
+    }
+}
