@@ -1,0 +1,289 @@
+<template>
+    <div class="event-detail-banner">
+        <img src={campaign.portalImageLink} alt={campaign.Name} style="width:100%; max-height:250px;object-fit:cover;filter:brightness(0.5)" />
+        <div class="event-details-banner-text">
+            <div style="display: flex;justify-content: center;flex-direction: column;">
+                <h1>{campaign.Name}</h1>
+                <p class="event-time-detail">
+                    {formattedDateTimeRange}
+                </p>
+            </div>
+        </div>
+    </div>
+    <template if:true={showCalendar}>
+        <c-full-calendar></c-full-calendar>
+    </template>
+    <div class="container event-detail-container">
+        <lightning-layout multiple-rows="">
+            <lightning-layout-item size="12" small-device-size="12" medium-device-size="8" large-device-size="8">
+                <div class="event-detail-description">
+                    <h2>Description</h2>
+                    <p class="slds-m-top_small event_detail_description"></p>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" small-device-size="12" medium-device-size="4" large-device-size="4" style="padding:0 20px;">
+                <div class="event_detail_side_card padding_50" style="padding:20px;">
+                    <h3 class="event_date_time_heading">Date & Time</h3>
+                        <lightning-layout multiple-rows="">
+                            <lightning-layout-item size="12">
+                                <div class="event_details_card">
+                                    <lightning-icon
+                                        icon-name="utility:event"
+                                        alternative-text="Calendar"
+                                        title="Calendar"
+                                        size="medium">
+                                    </lightning-icon>
+                                    <span>{formattedOnlyDateRange}</span>
+                                </div>
+                                <div class="event_details_card">
+                                    <lightning-icon
+                                        icon-name="utility:clock"
+                                        alternative-text="Time"
+                                        title="Time"
+                                        size="medium">
+                                    </lightning-icon>
+                                    <span>{formattedTimeRange}</span>
+                                </div>
+                                <div class="event_details_card border_bottom_1">
+                                    <lightning-icon 
+                                        icon-name="utility:add" 
+                                        alternative-text="Add" 
+                                        size="small" 
+                                        title="Add">
+                                    </lightning-icon>
+                                    <span><a class="add_to_calendar" onclick={handleAddToCalendar}>Add to Calendar</a></span>
+                                </div>
+                                <div class="event_register_button">
+                                    <a class="main-btn"><span>Register Now</span>
+                                        <span class="arrow">
+                                            <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line>
+                                                <polyline points="7 7 17 7 17 17"></polyline>
+                                            </svg>
+                                        </span>
+                                        <div class="hover_effect"></div>
+                                    </a>
+                                    <!-- <lightning-button
+                                        label="Register Now"
+                                        onclick={openRegisterModal}
+                                        variant="brand">
+                                    </lightning-button> -->
+                                </div>
+                                <div class="event_details_card border_bottom_2">
+                                    <lightning-icon 
+                                        icon-name="utility:user" 
+                                        alternative-text="Profile" 
+                                        size="medium">
+                                    </lightning-icon>
+                                    <span>RamKrishna, Aksh and 264 are attending</span>
+                                </div>
+                                <div class="event_details_card not_attending">
+                                    <a class=""><span>I'm not attending</span>
+                                    <lightning-icon 
+                                        icon-name="utility:close" 
+                                        alternative-text="Close" 
+                                        size="small">
+                                    </lightning-icon></a>
+                                </div>
+                            </lightning-layout-item>
+                        </lightning-layout>
+                       
+                        
+                        <template if:true={isRegisterModalOpen}>
+                            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open register_modal_form_section">
+                                <div class="slds-modal__container">
+                                    <!-- Modal Header -->
+                                    <header class="slds-modal__header">
+                                        <h2 class="slds-modal__title">How can we reach you?</h2>
+                                    </header>
+
+                                    <!-- Modal Body -->
+                                    <div class="slds-modal__content slds-p-around_medium">
+                                        <lightning-input
+                                            label="First Name"
+                                            value={firstName}
+                                            onchange={handleInput}
+                                            name="firstName">
+                                        </lightning-input>
+
+                                        <lightning-input
+                                            label="Last Name"
+                                            value={lastName}
+                                            onchange={handleInput}
+                                            name="lastName">
+                                        </lightning-input>
+
+                                        <lightning-input
+                                            label="Email"
+                                            type="email"
+                                            value={email}
+                                            onchange={handleInput}
+                                            name="email">
+                                        </lightning-input>
+
+                                        <lightning-input
+                                            label="Phone"
+                                            type="tel"
+                                            value={phone}
+                                            onchange={handleInput}
+                                            name="phone">
+                                        </lightning-input>
+                                    </div>
+
+                                    <!-- Modal Footer -->
+                                    <footer class="slds-modal__footer">
+                                        <lightning-button variant="brand" label="Submit" onclick={handleRegisterSubmit}></lightning-button>
+                                    </footer>
+                                </div>
+                            </section>
+                            <div class="slds-backdrop slds-backdrop_open"></div>
+                        </template>
+                </div>
+                <div style="border-radius:20px;margin-top:40px;">
+                    <h2>Event Location</h2>
+                    
+    <template if:true={mapUrl}>
+        <iframe
+            src={mapUrl}
+            width="100%"
+            height="250"
+            style="border:0;border-radius:10px;"
+            allowfullscreen=""
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+    </template>
+
+    <template if:false={mapUrl}>
+        <p style="text-align:center; margin-top:5px; color:#666;">
+            Event address is not available.
+        </p>
+    </template>
+
+
+                </div>
+                <div style="border-radius:20px;margin-top:20px;">
+                    <h3 class="font-32 font-weight-500 color_black phone-font-size-22">Motilal Oswal Tower</h3>
+                    <p class="font-14 font-weight:500 color_54565A">
+                        Corporate Headquarters, Sayani Road, opposite Parel, Prabhadevi, Mumbai, Maharashtra, India
+                    </p>
+                </div>
+            </lightning-layout-item>
+        </lightning-layout>
+        <lightning-layout multiple-rows="" class="gallerySection">
+            <lightning-layout-item size="12">
+                <h2>Gallery</h2>
+            </lightning-layout-item>
+            <lightning-layout-item size="12">
+                <div class="owl-carousel owl-theme">
+                    <div class="item">
+                        <img src='/resource/galleryImg1' alt="Slide 1" />
+                    </div>
+                    <div class="item">
+                        <img src='/resource/galleryImg2' alt="Slide 1" />
+                    </div>
+                </div>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" class="mb-50">
+                <h2 class="mt-60 mb-30">Closing Remark / Summary</h2>
+                <p>
+                    Our recent Alumni gathering was a great success, with over 120 participants. We celebrated Milestone achievements, Shared inspiring stories, and strengthened our network for future collaborations.
+                    <br><br>
+                    <span style="color:#004B6A;font-style:italic;">No closing remarks have been added yet.</span>
+                </p>
+            </lightning-layout-item>
+        </lightning-layout>
+    </div>
+
+    <!-- pledge modal -->
+    <template if:true={isPledgeModalOpen}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open pledgeSection">
+            <div class="slds-modal__container">
+                <!-- Modal/Popup Header -->
+                <header class="slds-modal__header">
+                    <!-- <h2 class="slds-text-heading_medium">Pladge Details</h2> -->
+                    <button class="slds-button slds-modal__close" title="Close" onclick={closePledgeModal}>
+                        <lightning-icon icon-name="utility:close" alternative-text="close" size="small"></lightning-icon>
+                    </button>
+                </header>
+
+                <!-- Modal Body -->
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-layout multiple-rows="">
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="First Name" value="Deepak" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="Last Name" value="Kumar" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="Primary Email Address" value="deepak.kumar@codleo.com" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="Mobile Number" value="9576041158" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="Roll Number" value="20019" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="Department" value="Btech" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="Year of Graduation" value="1998" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" flexibility="auto" padding="around-small">
+                            <lightning-input label="Hostel" value="Hostel201" disabled=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="12">
+                            <h2 style="text-align:center;">Donation Details</h2>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" padding="around-small">
+                            <lightning-input label="Donation Amount (INR)" type="number" value=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" padding="around-small">
+                            <lightning-radio-group class="isRecurring"
+                                name="yesNo"
+                                label="Is this a recurring Donation?"
+                                options={recurringOptions}
+                                value={selectedValue}
+                                onchange={handleRecurringChange}
+                                type="radio">
+                            </lightning-radio-group>
+                        </lightning-layout-item>
+                    <template if:true={isRecurringDonationYes}>
+                        <lightning-layout-item size="6" padding="around-small">
+                            <lightning-combobox
+                                name="subscription"
+                                label="Frequency of Recurrence"
+                                placeholder="Frequency of Recurrence"
+                                options={recurringFreqencyOptions}>
+                            </lightning-combobox>
+                        </lightning-layout-item>
+                    </template>
+                        <lightning-layout-item size="6" padding="around-small">
+                            <lightning-combobox
+                                name="subscription"
+                                label="Preferred Payment Method"
+                                placeholder="Preferred Payment Method"
+                                options={paymentOptions}>
+                            </lightning-combobox>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" padding="around-small">
+                            <lightning-input label="Date of Donation" type="date" value=""></lightning-input>
+                        </lightning-layout-item>
+                        <lightning-layout-item size="6" padding="around-small">
+                            <lightning-input label="PAN Number" value=""></lightning-input>
+                        </lightning-layout-item>
+                    </lightning-layout>
+                   
+                </div>
+
+                <!-- Modal Footer -->
+                <footer class="slds-modal__footer">
+                    <lightning-button variant="neutral" label="Cancel" onclick={closePledgeModal}></lightning-button>
+                    <lightning-button variant="brand" label="Confirm" onclick={submiPledgeModal}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>
