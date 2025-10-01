@@ -1,5 +1,6 @@
 import { LightningElement, track, wire, api } from 'lwc';
 import getEventCampaigns from '@salesforce/apex/CampaignController.getEventDetailCampaigns';
+import getCampaignFilesWithPortalLink from '@salesforce/apex/CampaignController.getGalleryFilesForCampaign';
 import getPaymentDetails from '@salesforce/apex/RazorpayOrderController.fetchPaymentDetails';
 import {loadScript, loadStyle } from 'lightning/platformResourceLoader';
 import viewDetailsOfSelectedEventStyle from '@salesforce/resourceUrl/viewDetailsOfSelectedEventStyle';
@@ -14,6 +15,7 @@ import owlThemeDefaultMiinCss from '@salesforce/resourceUrl/owlThemeDefaultMiinC
 export default class ViewDetailsOfSelectedEvent extends LightningElement {
     isOwlLoaded = false;
  @track campaignId;
+ @track files = [];
     @track campaign = {};
     @track userName = '';
     @track userEmail = '';
@@ -23,11 +25,26 @@ export default class ViewDetailsOfSelectedEvent extends LightningElement {
     @track formattedDateTimeRange;
     @track formattedTimeRange
     @track formattedOnlyDateRange
-
+     
     // Deepak Code Start
     @track isRegisterModalOpen = false;
     @track isPledgeModalOpen = false;
     @track isRecurringDonationYes = false;
+    isLibLoaded = false;
+    isOwlInit = false;
+
+      connectedCallback() {
+        if (this.campaignId) {
+            getCampaignFilesWithPortalLink({ campaignId: this.campaignId })
+                .then(result => {
+                    this.files = result;
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+    }
+
     handlePledge() {
         this.isPledgeModalOpen = true;
     }
@@ -58,6 +75,9 @@ export default class ViewDetailsOfSelectedEvent extends LightningElement {
         ];
     }
     openRegisterModal() {
+        this.selectedTitle = this.eventDetails?.Name;
+        this.selectedStartDate = this.eventDetails?.Event_starts_on__c;
+    this.selectedEndDate = this.eventDetails?.Event_ends_on__c;
         this.isRegisterModalOpen = true;
     }
 
@@ -121,59 +141,63 @@ export default class ViewDetailsOfSelectedEvent extends LightningElement {
     }
     renderedCallback() {
         loadStyle(this, viewDetailsOfSelectedEventStyle)
-        .then(() => {
-            console.log('CSS loaded successfully');
-        })
-        .catch(error => {
-            console.error('Error loading CSS', error);
-        });
-        if (this.isOwlLoaded) {
+        // load only once
+        if (this.isLibLoaded) {
+            // re-init if files are rendered but owl not initialized
+            this.refreshCarousel();
             return;
         }
-        this.isOwlLoaded = true;
-        
+        this.isLibLoaded = true;
+
         Promise.all([
             loadScript(this, jqueryMinJs),
+            loadScript(this, owlCarouselMinJs),
             loadStyle(this, owlCarouselMinCss),
-            loadStyle(this, owlThemeDefaultMiinCss),
-            loadScript(this, owlCarouselMinJs)
+            loadStyle(this, owlThemeDefaultMinCss)
         ])
         .then(() => {
-            this.initializeCarousel();
+            this.refreshCarousel();
         })
         .catch(error => {
             console.error("Error loading Owl Carousel:", error);
         });
     }
-    initializeCarousel() {
-    setTimeout(() => {
-        const slider = this.template.querySelector('.owl-carousel');
-        if (slider && window.$) {
-            const $slider = $(slider);
 
-            $slider.owlCarousel({
-                items: 2,
-                loop: true,
-                autoplay: true,
-                autoplayTimeout: 3000,
-                autoplayHoverPause: true,
-                nav: true,
-                dots: false,
-                smartSpeed: 600,
-                fluidSpeed: true,
-                navText: [
-                    '<i class="fa-solid fa-angle-left"></i>',
-                    '<i class="fa-solid fa-angle-right"></i>'
-                ]
-            });
+    refreshCarousel() {
+        // wait until DOM has rendered .item elements
+        window.clearTimeout(this._initTimer);
+        this._initTimer = window.setTimeout(() => {
+            const slider = this.template.querySelector('.owl-carousel');
+            if (slider && window.$ && this.files.length > 0) {
+                const $slider = window.$(slider);
 
-            // Force Owl to recalc navigation
-            $slider.trigger('refresh.owl.carousel');
-        } else {
-            console.error("Owl Carousel initialization failed. jQuery or slider not found.");
-        }
-    }, 200); // increased a bit for safer DOM render
-}
+                if (this.isOwlInit) {
+                    // destroy old instance first
+                    $slider.trigger('destroy.owl.carousel');
+                    $slider.classList.remove('owl-loaded');
+                    $slider.querySelectorAll('.owl-stage-outer').forEach(el => el.remove());
+                }
+
+                $slider.owlCarousel({
+                    items: 2,
+                    loop: true,
+                    margin: 10,
+                    autoplay: true,
+                    autoplayTimeout: 3000,
+                    autoplayHoverPause: true,
+                    nav: true,
+                    dots: false,
+                    smartSpeed: 600,
+                    navText: [
+                        '<i class="fa-solid fa-angle-left"></i>',
+                        '<i class="fa-solid fa-angle-right"></i>'
+                    ]
+                });
+
+                this.isOwlInit = true;
+            }
+        }, 300); // small delay so template children are rendered
+    }
 
 
    fetchCampaign() {
