@@ -45,13 +45,48 @@
                                     <span>{formattedTimeRange}</span>
                                 </div>
                                 <div class="event_details_card border_bottom_1">
-                                    <lightning-icon 
+                                    <!-- <lightning-icon 
                                         icon-name="utility:add" 
                                         alternative-text="Add" 
                                         size="small" 
                                         title="Add">
-                                    </lightning-icon>
-                                    <span><a class="add_to_calendar" onclick={handleAddToCalendar}>Add to Calendar</a></span>
+                                    </lightning-icon> -->
+                                    <!-- Add to Calendar Link -->
+                                    <div class="event_details_card">
+                                        <lightning-icon icon-name="utility:add" size="small"></lightning-icon>
+                                        <span>
+                                            <a class="add_to_calendar" onclick={handleAddToCalendar}>Add to Calendar</a>
+                                        </span>
+                                    </div>
+
+                                    <!-- Modal with FullCalendar -->
+                                    <template if:true={showCalendar}>
+                                        <section role="dialog" tabindex="-1" aria-modal="true"
+                                            class="slds-modal slds-fade-in-open slds-modal_large">
+                                            <div class="slds-modal__container">
+
+                                                <!-- Header -->
+                                                <header class="slds-modal__header">
+                                                    <button class="slds-button slds-modal__close" title="Close" onclick={closeCalendar}>
+                                                        <lightning-icon icon-name="utility:close" alternative-text="close" size="small"></lightning-icon>
+                                                    </button>
+                                                    <!-- <h2 class="slds-text-heading_medium">Add to Calendar</h2> -->
+                                                </header>
+
+                                                <!-- Body -->
+                                                <div class="slds-modal__content slds-p-around_medium">
+                                                    <c-full-calendar></c-full-calendar>
+                                                </div>
+
+                                                <!-- Footer -->
+                                                <footer class="slds-modal__footer">
+                                                    <lightning-button variant="neutral" label="Close" onclick={closeCalendar}></lightning-button>
+                                                </footer>
+                                            </div>
+                                        </section>
+                                        <div class="slds-backdrop slds-backdrop_open"></div>
+                                    </template>
+
                                 </div>
                                 <div class="event_register_button">
                                     <a class="main-btn"><span>Register Now</span>
@@ -140,57 +175,55 @@
                 </div>
                 <div style="border-radius:20px;margin-top:40px;">
                     <h2>Event Location</h2>
-                    
-    <template if:true={mapUrl}>
-        <iframe
-            src={mapUrl}
-            width="100%"
-            height="250"
-            style="border:0;border-radius:10px;"
-            allowfullscreen=""
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
-    </template>
+                    <template if:true={mapUrl}>
+                        <iframe
+                            src={mapUrl}
+                            width="100%"
+                            height="250"
+                            style="border:0;border-radius:10px;"
+                            allowfullscreen=""
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade">
+                        </iframe>
+                    </template>
 
-    <template if:false={mapUrl}>
-        <p style="text-align:center; margin-top:5px; color:#666;">
-            Event address is not available.
-        </p>
-    </template>
-
-
+                    <template if:false={mapUrl}>
+                        <p style="text-align:center; margin-top:5px; color:#666;">
+                            Event address is not available.
+                        </p>
+                    </template>
                 </div>
-                <div style="border-radius:20px;margin-top:20px;">
+                <!-- <div style="border-radius:20px;margin-top:20px;">
                     <h3 class="font-32 font-weight-500 color_black phone-font-size-22">Motilal Oswal Tower</h3>
                     <p class="font-14 font-weight:500 color_54565A">
                         Corporate Headquarters, Sayani Road, opposite Parel, Prabhadevi, Mumbai, Maharashtra, India
                     </p>
-                </div>
+                </div> -->
             </lightning-layout-item>
         </lightning-layout>
-        <lightning-layout multiple-rows="" class="gallerySection">
+        <lightning-layout multiple-rows="" class="gallerySection" >
             <lightning-layout-item size="12">
                 <h2>Gallery</h2>
             </lightning-layout-item>
             <lightning-layout-item size="12">
                 <div class="owl-carousel owl-theme">
-                    <div class="item">
-                        <img src='/resource/galleryImg1' alt="Slide 1" />
-                    </div>
-                    <div class="item">
-                        <img src='/resource/galleryImg2' alt="Slide 1" />
-                    </div>
+                    <template for:each={files} for:item="file">
+                        <div key={file.fileName} class="item">
+                            <img src={file.portalImageLink} alt={file.fileName} />
+                        </div>
+                    </template>
                 </div>
-            </lightning-layout-item>
-            <lightning-layout-item size="12" class="mb-50">
+            </lightning-layout-item> 
+          
+
+            <!-- <lightning-layout-item size="12" class="mb-50">
                 <h2 class="mt-60 mb-30">Closing Remark / Summary</h2>
                 <p>
                     Our recent Alumni gathering was a great success, with over 120 participants. We celebrated Milestone achievements, Shared inspiring stories, and strengthened our network for future collaborations.
                     <br><br>
                     <span style="color:#004B6A;font-style:italic;">No closing remarks have been added yet.</span>
                 </p>
-            </lightning-layout-item>
+            </lightning-layout-item> -->
         </lightning-layout>
     </div>
 
