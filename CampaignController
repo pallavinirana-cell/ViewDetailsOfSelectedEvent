@@ -114,6 +114,11 @@ if (camp.ContentDocumentLinks != null && !camp.ContentDocumentLinks.isEmpty()) {
             return null;
         }
     }
+    public class CampaignFileWrapper {
+    @AuraEnabled public String fileName { get; set; }
+    @AuraEnabled public String downloadUrl { get; set; }
+    @AuraEnabled public String portalImageLink { get; set; }
+}
 
     public class CampaignResponse {
         @AuraEnabled public Integer totalCount { get; set; }
@@ -438,6 +443,9 @@ public static List<CampaignWrapper> getCampaignById(Id campaignId) {
         return result;
     }
 
+
+
+
     @AuraEnabled(cacheable=false)
     public static List<CampaignWrapper> getPastEventCampaigns(Integer pageSize, Integer pageNumber) {
         Date today = Date.today();
@@ -502,4 +510,49 @@ public static Integer getPastCampaignsCount() {
         }
         return result;
     }
+
+    @AuraEnabled(cacheable=true)
+public static List<CampaignFileWrapper> getGalleryFilesForCampaign(Id campaignId) {
+    List<CampaignFileWrapper> files = new List<CampaignFileWrapper>();
+    
+    // Get all ContentDocumentLinks for the campaign
+    List<ContentDocumentLink> links = [
+        SELECT ContentDocumentId, ContentDocument.LatestPublishedVersionId, ContentDocument.Title
+        FROM ContentDocumentLink
+        WHERE LinkedEntityId = :campaignId
+    ];
+    
+    // Collect all LatestPublishedVersionIds
+    Set<Id> versionIds = new Set<Id>();
+    Map<Id, String> docTitleMap = new Map<Id, String>(); // Map ContentVersionId -> Title
+    for(ContentDocumentLink link : links) {
+        if(link.ContentDocument != null && link.ContentDocument.LatestPublishedVersionId != null) {
+            versionIds.add(link.ContentDocument.LatestPublishedVersionId);
+            docTitleMap.put(link.ContentDocument.LatestPublishedVersionId, link.ContentDocument.Title);
+        }
+    }
+    
+    if(!versionIds.isEmpty()) {
+        // Query all ContentVersions with Type__c = 'Event Gallery Image' in one go
+        List<ContentVersion> cvs = [
+            SELECT Id, Portal_Image_Link__c
+            FROM ContentVersion
+            WHERE Id IN :versionIds
+              AND Type__c = 'Event Gallery Image'
+        ];
+        
+        for(ContentVersion cv : cvs) {
+            CampaignFileWrapper wrapper = new CampaignFileWrapper();
+            wrapper.fileName = docTitleMap.get(cv.Id);
+            wrapper.downloadUrl = '/sfc/servlet.shepherd/version/download/' + cv.Id;
+            wrapper.portalImageLink = cv.Portal_Image_Link__c;
+            files.add(wrapper);
+        }
+    }
+    
+    return files;
+}
+
+
+    
 }
