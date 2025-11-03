@@ -1,0 +1,203 @@
+<template>
+    <div class="caseContainer">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="profile-section">
+                <img src={currentUser.photoUrl} alt="profile" class="profile-pic" />
+                <h2>{currentUser.name}</h2>
+                <p>{currentUser.title}</p>
+                <p>{currentUser.email}</p>
+            </div>
+
+            <ul class="menu">
+                <template for:each={menuOptions} for:item="type">
+                    <li key={type.value}>
+                        <button class={type.class} data-value={type.value} onclick={handleTypeChange}>
+                            {type.label}
+                        </button>
+                    </li>
+                </template>
+            </ul>
+        </div>
+
+       
+        <div class="main">
+           
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Loading..." size="medium"></lightning-spinner>
+            </template>
+
+            
+            <template if:true={showCaseList}>
+                <template if:false={isAllRequests}>
+                    <div class="top-right-button">
+                        <a class="main-btn" onclick={openForm}><span>New&nbsp;</span>
+                            <span class="arrow">
+                                <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="7" y1="17" x2="17" y2="7"></line>
+                                    <polyline points="7 7 17 7 17 17"></polyline>
+                                </svg>
+                            </span>
+                            <div class="hover_effect"></div>
+                        </a>
+                    </div>
+                </template>
+            </template>
+
+            
+            <template if:true={showCaseList}>
+                <template if:true={cases.length}>
+                    <table class="caseTable">
+                        <thead>
+                            <tr>
+                                <template for:each={columns} for:item="column">
+                                    <th key={column.fieldName}>
+                                        <span>{column.label}</span>
+                                    </th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                           
+                            <template if:true={isJobPosting}>
+                                <template for:each={cases} for:item="jobPosting">
+                                    <tr key={jobPosting.Id}>
+                                        <td><a href={jobPosting.jobUrl}>{jobPosting.JobTitle}</a></td>
+                                        <td>{jobPosting.CompanyName}</td>
+                                        <td>{jobPosting.Status}</td>
+                                        <td>{jobPosting.JobType}</td>
+                                        <td>{jobPosting.WorkMode}</td>
+                                    </tr>
+                                </template>
+                            </template>
+
+                           
+                            <template if:false={isJobPosting}>
+                                <template for:each={cases} for:item="caseRecord">
+                                    <tr key={caseRecord.Id}>
+                                        <td><a href={caseRecord.caseUrl}>{caseRecord.CaseNumber}</a></td>
+                                        <td>{caseRecord.Type}</td>
+                                        <td>{caseRecord.Status}</td>
+                                        <td>{caseRecord.CreatedDateFormatted}</td>
+                                        <td>{caseRecord.LastModifiedDateFormatted}</td>
+                                    </tr>
+                                </template>
+                            </template>
+
+                        </tbody>
+                    </table>
+                </template>
+
+                
+                <template if:false={cases.length}>
+                    <div class="no-data-container">
+                        <lightning-icon icon-name="utility:info" alternative-text="No Data" size="large"
+                            class="no-data-icon">
+                        </lightning-icon>
+                        <p class="no-data-text">No records found</p>
+                    </div>
+                </template>
+            </template>
+
+           
+            <template if:true={showForm}>
+
+                
+                <template if:true={isJobPosting}>
+                    <c-job-posting-form onformsubmitted={handleChildFormSuccess}
+                        onformcancelled={handleChildFormCancel}></c-job-posting-form>
+                </template>
+
+                
+                <template if:true={ismembership}>
+                    <c-member-ship-request key={membershipFormKey} onformsubmitted={handleChildFormSuccess}
+                        onformcancelled={handleChildFormCancel}>
+                    </c-member-ship-request>
+                </template>
+
+                
+                <template if:true={showDefaultForm}>
+                    <h2 class="formRequest-title">
+                        <span>{selectedType} Request</span>
+                    </h2>
+
+                    
+                    <lightning-record-edit-form
+                        object-api-name="Case"
+                        record-type-id={recordTypeId}
+                        onsuccess={handleSuccess}
+                        oncancel={handleCancel}>
+                        
+                        <lightning-messages></lightning-messages>
+
+                        <div class="slds-grid slds-wrap slds-gutters">
+
+                            <template if:false={isProfileUpdate}>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Type" value={selectedType}></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Status"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Priority"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Subject"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1">
+                                    <lightning-input-field field-name="WorkMode"></lightning-input-field>
+                                </div>
+                            </template>
+
+                            <template if:true={isProfileUpdate}>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Type" value={selectedType}></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Primary_Email__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Secondary_Email__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Batch__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Birth_Date__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Department__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Gender__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Mobile__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Student_ID__c"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input-field field-name="Subject"></lightning-input-field>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1">
+                                    <lightning-input-field field-name="WorkMode"></lightning-input-field>
+                                </div>
+                            </template>
+
+                            <div class="slds-col slds-size_1-of-1 form-buttons">
+                                <lightning-button variant="neutral" label="Cancel" onclick={handleCancel}></lightning-button>
+                                <lightning-button variant="brand" type="submit" label="Save"></lightning-button>
+                            </div>
+                        </div>
+                    </lightning-record-edit-form>
+                </template>
+            </template>
+        </div>
+    </div>
+</template>
