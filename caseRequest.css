@@ -1,0 +1,264 @@
+.caseContainer {
+    display: flex;
+    font-family: 'Montserrat';
+    min-height: 600px;
+}
+
+/* Sidebar */
+.sidebar {
+    flex: 1;
+    background-color: #fff;
+    margin: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ddd;
+}
+
+.profile-section {
+    text-align: center;
+    padding: 1rem;
+    border-bottom: 1px solid #ddd;
+}
+
+.profile-pic {
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    margin-bottom: 10px;
+    filter: drop-shadow(0px 5px 5px rgb(231, 231, 231));
+}
+
+.profile-section h2 {
+    font-size: 18px;
+    margin: 5px 0;
+}
+
+.profile-section p {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Menu */
+.menu {
+    list-style: none;
+    padding: 1rem;
+}
+
+.menu li {
+    margin-bottom: 10px;
+}
+
+.menu-btn {
+    background: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+    font-size: 15px;
+    padding: 0.5rem 2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+        background-color: #004b6a;
+        color: #fff;
+    }
+}
+
+.menu-btn.active {
+    background-color: #004b6a;
+    color: #fff;
+}
+
+.menu-btn:hover {
+    background-color: #004b6a;
+}
+
+/* Main */
+.main {
+    flex: 4;
+    padding: 30px;
+    background-color: #fff;
+    position: relative;
+}
+
+.top-right-button {
+    text-align: right;
+}
+
+/* Styled table */
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 60px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.styled-table th,
+.styled-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.styled-table th {
+    background-color: #f0f2f5;
+    font-weight: 600;
+}
+
+.styled-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Status */
+.status {
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.status.approved {
+    background-color: #28a745;
+}
+
+.status.rejected {
+    background-color: #dc3545;
+}
+
+/* Form spacing */
+.lightning-record-form {
+    margin-top: 20px;
+}
+
+.form-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* custom css by gyanu*/
+table.caseTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+}
+
+table.caseTable thead tr>th {
+    color: #fff;
+    background: #004b6a;
+    padding: 0.75rem 1rem;
+    text-align: center;
+    border: none;
+    font-weight: normal;
+    font-size: 0.8125rem;
+}
+
+table.caseTable tbody tr>td {
+    padding: 0.75rem 1rem;
+    text-align: center;
+    color: #000;
+    border: none;
+}
+
+table.caseTable tbody tr:nth-child(odd) {
+    background-color: #fff;
+}
+
+table.caseTable tbody tr:nth-child(even) {
+    background-color: #eefbff;
+}
+
+table.caseTable tr>td .status {
+    padding: 0.5rem 1rem;
+    background: #9ec93a;
+    border-radius: 0.25rem;
+    color: #fff;
+}
+
+@media only screen and (max-width: 798px) {}
+
+.formRequest-title {
+    font-size: 30px;
+    color: #000;
+    position: relative;
+    padding-bottom: 5px;
+}
+
+.formRequest-title::after {
+    left: 50px !important;
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    border-bottom: 3px solid #FF9900;
+    width: 120px;
+}
+
+.no-data-container {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #606060;
+    background: #f9f9f9;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.no-data-icon {
+    --sds-c-icon-color-foreground-default: #9e9e9e;
+    margin-bottom: 0.5rem;
+}
+
+.no-data-text {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.main-btn {
+    display: inline-block !important;
+    width: auto !important;
+    border-radius: 3px;
+    padding: 5px 10px;
+    background-color: #A51D40;
+    position: relative;
+    color: #fff;
+    text-align: center;
+    align-items: center;
+    text-decoration: none;
+}
+.main-btn span{
+    font-size: 13px !important;
+    z-index: 4;
+    color: #fff;
+    position: relative;
+}
+.main-btn .hover_effect{
+background-color: #7F0726;
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 0%;
+    display: block;
+    transition: all .4s 
+ease 0s;
+    height: 100%;
+    border-radius: 3px;
+}
+.main-btn:hover .arrow svg {
+    rotate: 45deg;
+    transition: all .4s 
+ease 0s;
+}
+.main-btn:hover .hover_effect {
+    width: 100%;
+    transition: all .4s 
+ease 0s;
+    position: absolute;
+    z-index: 2;
+}
