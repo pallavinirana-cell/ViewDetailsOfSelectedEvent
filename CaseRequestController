@@ -1,215 +1,218 @@
-import { LightningElement, track, wire } from 'lwc';
-import { getRecord } from 'lightning/uiRecordApi';
-import USER_ID from '@salesforce/user/Id';
+public without sharing class CaseRequestController {
 
-import NAME_FIELD from '@salesforce/schema/User.Name';
-import EMAIL_FIELD from '@salesforce/schema/User.Email';
-import TITLE_FIELD from '@salesforce/schema/User.Title';
-import PHOTO_URL_FIELD from '@salesforce/schema/User.SmallPhotoUrl';
-
-import getAllJobs from '@salesforce/apex/JobPostingController.getAllJobs';
-import getCasesByRecordType from '@salesforce/apex/CaseRequestController.getCasesByRecordType';
-import getRecordTypeIdByType from '@salesforce/apex/CaseRequestController.getRecordTypeIdByType'; 
-
-import { loadStyle } from 'lightning/platformResourceLoader';
-import caseRequest from '@salesforce/resourceUrl/caseRequest';
-
-export default class CaseRequest extends LightningElement {
-
-    @track selectedType = 'All Requests';
-    @track cases = [];
-    @track columns = [];
-    @track menuOptions = [];
-
-    @track showCaseList = true;
-    @track showForm = false;
-    @track isJobPosting = false;
-    @track ismembership = false;
-    @track isProfileUpdate = false;
-    @track isAllRequests = true;
-    @track isLoading = false;
-    @track recordTypeId; 
-
-    @track currentUser = {
-        name: '',
-        email: '',
-        title: '',
-        photoUrl: ''
-    };
-
-    jobPostingColumns = [
-        { label: 'Job Title', fieldName: 'JobTitle' },
-        { label: 'Company Name', fieldName: 'CompanyName' },
-        { label: 'Status', fieldName: 'Status' },
-        { label: 'Job Type', fieldName: 'JobType' },
-        { label: 'Work Mode', fieldName: 'WorkMode' }
-    ];
-
-    caseColumns = [
-        { label: 'Request Number', fieldName: 'CaseNumber' },
-        { label: 'Request Type', fieldName: 'Type' },
-        { label: 'Status', fieldName: 'Status' },
-        { label: 'Created Date', fieldName: 'CreatedDateFormatted' },
-        { label: 'Last Modified Date', fieldName: 'LastModifiedDateFormatted' }
-    ];
-
-    formatIST(dateValue) {
-        if (!dateValue) return '';
-        const date = new Date(dateValue);
-        return new Intl.DateTimeFormat('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(date);
+    @AuraEnabled(cacheable=true)
+    public static User getCurrentUserProfile() {
+        String userId = UserInfo.getUserId();
+        return [
+            SELECT Id, Email, FirstName, LastName, Gender__c, Secondary_Email__c, Birth_Date__c,
+                   MobilePhone, Phone, Street, City, CountryCode, StateCode, State, PostalCode, 
+                   AccountId, ContactId, Country, Name, Roll_No__c, SmallPhotoUrl, Department, Batch__c
+            FROM User
+            WHERE Id = :userId
+            LIMIT 1
+        ];
     }
 
-    @wire(getRecord, { recordId: USER_ID, fields: [NAME_FIELD, EMAIL_FIELD, TITLE_FIELD, PHOTO_URL_FIELD] })
-    wiredUser({ error, data }) {
-        if (data) {
-            this.currentUser = {
-                name: data.fields.Name.value,
-                email: data.fields.Email.value,
-                title: data.fields.Title.value,
-                photoUrl: data.fields.SmallPhotoUrl.value
+    @AuraEnabled(cacheable=true)
+    public static List<PersonEducation> getEducationInfo() {
+        User currentUser = [SELECT ContactId FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
+        if (currentUser.ContactId == null) return new List<PersonEducation>();
+
+        return [
+            SELECT Id, AccountId, ContactId, Name, Department__c, Convocation_Year__c, Degree__c, Type__c,
+                   Roll_Number__c, Hostel__c, Major__c, Minor__c, University_Name__c, EndDate, Graduation_Year__c
+            FROM PersonEducation
+            WHERE ContactId = :currentUser.ContactId
+        ];
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static List<PersonEmployment> getProfessionalInfo() {
+        User currentUser = [SELECT ContactId FROM User WHERE Id = :UserInfo.getUserId() LIMIT 1];
+        if (currentUser.ContactId == null) return new List<PersonEmployment>();
+
+        return [
+            SELECT Id, AccountId, RelatedPersonId, Name, Job_Designation__c, Department__c, 
+                   Industry__c, Account.LinkedIn__c
+            FROM PersonEmployment
+            WHERE RelatedPersonId = :currentUser.ContactId
+        ];
+    }
+
+    // 🟡 Updated method with Draft + Edit Draft handling
+    @AuraEnabled
+    public static Id createCaseRequest(
+        String subject,
+        String description,
+        String type,
+        String status,
+        String priority,
+        String suppliedEmail,
+        String suppliedPhone,
+        Boolean isDraft,
+        Id existingCaseId
+    ) {
+        try {
+            Map<String, String> typeToRecordType = new Map<String, String>{
+                'Membership'         => 'Membership',
+                'Job Posting'        => 'Job Posting',
+                'Guest House'        => 'Guest House',
+                'Gate Pass'          => 'Gate Pass',
+                'Donation'           => 'Donation',
+                'Event Registration' => 'Event Registration',
+                'Profile Update'     => 'Profile Update'
             };
-        } else if (error) {
-            console.error('Error fetching user: ', error);
+
+            String recordTypeLabel = typeToRecordType.containsKey(type)
+                ? typeToRecordType.get(type)
+                : 'Profile Update';
+
+            Map<String, Schema.RecordTypeInfo> rtMap = Schema.SObjectType.Case.getRecordTypeInfosByName();
+            Id recordTypeId = rtMap.containsKey(recordTypeLabel)
+                ? rtMap.get(recordTypeLabel).getRecordTypeId()
+                : null;
+
+            if (recordTypeId == null) {
+                throw new AuraHandledException('Record Type not found for this Case Type: ' + type);
+            }
+
+            // 🟡 Determine final status
+            String finalStatus = isDraft ? 'Draft' : 'Pending';
+
+            Case caseRecord;
+            if (existingCaseId != null) {
+                // 🟢 If editing an existing draft
+                caseRecord = [
+                    SELECT Id, Status 
+                    FROM Case 
+                    WHERE Id = :existingCaseId 
+                    LIMIT 1
+                ];
+
+                if (caseRecord.Status == 'Draft') {
+                    caseRecord.Subject = subject;
+                    caseRecord.Description = description;
+                    caseRecord.Type = type;
+                    caseRecord.Priority = String.isNotBlank(priority) ? priority : 'Medium';
+                    caseRecord.SuppliedEmail = suppliedEmail;
+                    caseRecord.SuppliedPhone = suppliedPhone;
+                    caseRecord.Status = finalStatus;
+                    update caseRecord;
+                    return caseRecord.Id;
+                } else {
+                    throw new AuraHandledException('Cannot update non-draft requests.');
+                }
+            } else {
+                // 🟢 Create new Case record
+                Case newCase = new Case(
+                    Subject       = subject,
+                    Description   = description,
+                    Type          = type,
+                    Status        = finalStatus,
+                    Priority      = String.isNotBlank(priority) ? priority : 'Medium',
+                    SuppliedEmail = suppliedEmail,
+                    SuppliedPhone = suppliedPhone,
+                    RecordTypeId  = recordTypeId,
+                    Origin        = 'Portal'
+                );
+
+                insert newCase;
+                return newCase.Id;
+            }
+
+        } catch (Exception e) {
+            throw new AuraHandledException('Error creating or updating request: ' + e.getMessage());
         }
     }
 
-    connectedCallback() {
-        loadStyle(this, caseRequest)
-            .then(() => console.log('CSS Loaded'))
-            .catch(() => console.log('CSS Failed'));
+    @AuraEnabled(cacheable=true)
+    public static Id getRecordTypeIdByType(String typeName) {
+        try {
+            Map<String, String> typeToRecordTypeMap = new Map<String, String>{
+                'Membership'         => 'Membership',
+                'Job Posting'        => 'Job Posting',
+                'Guest House'        => 'Guest House',
+                'Gate Pass'          => 'Gate Pass',
+                'Donation'           => 'Donation',
+                'Event Registration' => 'Event Registration',
+                'Profile Update'     => 'Profile Update'
+            };
 
-        this.menuOptions = [
-            { label: 'All Requests', value: 'All Requests' },
-            { label: 'Membership', value: 'Membership' },
-            { label: 'Job Posting', value: 'Job Posting' },
-            { label: 'Gate Pass', value: 'Gate Pass' },
-            { label: 'Guest House', value: 'Guest House' },
-            { label: 'Donation', value: 'Donation' },
-            { label: 'Event Registration', value: 'Event Registration' }
-            //{ label: 'Profile Update', value: 'Profile Update' }
-        ].map(opt => ({
-            ...opt,
-            class: opt.value === this.selectedType ? 'menu-btn active' : 'menu-btn'
-        }));
+            String recordTypeName = typeToRecordTypeMap.get(typeName);
 
-        this.fetchCases();
+            if (String.isBlank(recordTypeName)) {
+                throw new AuraHandledException('No Record Type mapping found for Case Type: ' + typeName);
+            }
+
+            RecordType rt = [
+                SELECT Id 
+                FROM RecordType 
+                WHERE SObjectType = 'Case' AND Name = :recordTypeName 
+                LIMIT 1
+            ];
+
+            return rt.Id;
+
+        } catch (Exception e) {
+            throw new AuraHandledException('Error fetching RecordTypeId: ' + e.getMessage());
+        }
     }
 
-    fetchCases() {
-    this.isLoading = true;
+    @AuraEnabled(cacheable=true)
+    public static List<Case> getCasesByRecordType(String recordTypeName) {
+        String userId = UserInfo.getUserId();
+        List<Case> caseList;
 
-    if (this.selectedType === 'Job Posting') {
-        getAllJobs()
-            .then(result => {
-                this.columns = this.jobPostingColumns;
-                this.cases = result.map(j => ({
-                    Id: j.Id,
-                    jobUrl: `/iitb/s/job-posting/${j.Id}/${encodeURIComponent(j.Job_Title__c)}`,
-                    JobTitle: j.Job_Title__c,
-                    CompanyName: j.Company_Name__c,
-                    Status: j.Approval_Status__c,
-                    JobType: j.Job_Type__c,
-                    WorkMode: j.Work_Mode__c
-                }));
-            })
-            .catch(error => console.error('Error fetching job postings: ', error))
-            .finally(() => (this.isLoading = false));
+        String baseQuery =
+            'SELECT Id, CaseNumber, RecordType.Name, CreatedDate, LastModifiedDate,' +
+            ' Subject, Status, Priority, Description, Type, First_Name__c, Last_Name__c,' +
+            ' SuppliedEmail, SuppliedPhone, Address__City__s, Address__CountryCode__s, Address__Street__s,' +
+            ' Address__StateCode__s, Address__PostalCode__s, Primary_Email__c, Secondary_Email__c, Batch__c,' +
+            ' Birth_Date__c, Department__c, Gender__c, Mobile__c, Student_ID__c' +
+            ' FROM Case WHERE CreatedById = :userId ';
 
-    } else {
-        let recordTypeName = this.selectedType === 'All Requests' ? null : this.selectedType;
+        if (String.isBlank(recordTypeName) || recordTypeName == 'All Requests' || recordTypeName == 'Profile Update') {
+            caseList = Database.query(baseQuery + 'ORDER BY CreatedDate DESC');
+        } else {
+            caseList = Database.query(baseQuery + 'AND RecordType.Name = :recordTypeName ORDER BY CreatedDate DESC');
+        }
 
-        getCasesByRecordType({ recordTypeName })
-            .then(result => {
-                this.columns = this.caseColumns;
-                this.cases = result.map(c => ({
-                    Id: c.Id,
-                    caseUrl: `/iitb/s/case/${c.Id}/${encodeURIComponent(c.CaseNumber)}`,
-                    CaseNumber: c.CaseNumber,
-                    Type: c.Type,
-                    Status: c.Status,
-                    CreatedDateFormatted: this.formatIST(c.CreatedDate),
-                    LastModifiedDateFormatted: this.formatIST(c.LastModifiedDate)
-                }));
-            })
-            .catch(error => console.error('Error fetching cases: ', error))
-            .finally(() => (this.isLoading = false));
-    }
-}
-
-
-    handleTypeChange(event) {
-        this.selectedType = event.target.dataset ? event.target.dataset.value : event.detail.value;
-
-        this.showForm = false;
-        this.showCaseList = true;
-
-        this.isJobPosting = this.selectedType === 'Job Posting';
-        this.ismembership = this.selectedType === 'Membership';
-        this.isProfileUpdate = this.selectedType === 'Profile Update';
-        this.isAllRequests = this.selectedType === 'All Requests';
-
-        this.menuOptions = this.menuOptions.map(opt => ({
-            ...opt,
-            class: opt.value === this.selectedType ? 'menu-btn active' : 'menu-btn'
-        }));
-
-        this.fetchCases();
+        return caseList;
     }
 
-    openForm() {
-        this.isLoading = true;
-        this.showForm = false;
-        this.showCaseList = false;
+    @AuraEnabled
+    public static void linkFilesToCase(String caseId, List<String> contentDocumentIds) {
+        try {
+            if (String.isBlank(caseId) || contentDocumentIds == null || contentDocumentIds.isEmpty()) {
+                throw new AuraHandledException('Invalid parameters provided');
+            }
 
-       
-        getRecordTypeIdByType({ typeName: this.selectedType })
-            .then(result => {
-                this.recordTypeId = result;
-                console.log(' Record Type ID fetched:', result);
-                setTimeout(() => {
-                    this.showForm = true;
-                    this.isLoading = false;
-                }, 400);
-            })
-            .catch(error => {
-                console.error('Error fetching Record Type ID:', error);
-                this.isLoading = false;
-                this.showForm = true; // fallback
-            });
+            List<ContentDocumentLink> links = new List<ContentDocumentLink>();
+            for (String docId : contentDocumentIds) {
+                links.add(new ContentDocumentLink(
+                    ContentDocumentId = docId,
+                    LinkedEntityId = caseId,
+                    ShareType = 'V',
+                    Visibility = 'AllUsers'
+                ));
+            }
+
+            if (!links.isEmpty()) insert links;
+
+        } catch (Exception e) {
+            throw new AuraHandledException('Error linking files: ' + e.getMessage());
+        }
     }
 
-    get showDefaultForm() {
-        return !this.ismembership && !this.isJobPosting;
-    }
-
-    handleSuccess() {
-        this.isLoading = false;
-        this.showForm = false;
-        this.showCaseList = true;
-        this.fetchCases();
-    }
-
-    handleCancel() {
-        this.isLoading = false;
-        this.showForm = false;
-        this.showCaseList = true;
-    }
-
-    handleChildFormSuccess() {
-        this.showForm = false;
-        this.showCaseList = true;
-        this.fetchCases();
-    }
-
-    handleChildFormCancel() {
-        this.showForm = false;
-        this.showCaseList = true;
+    @AuraEnabled
+    public static void deleteContentDocument(String contentDocumentId) {
+        try {
+            if (String.isBlank(contentDocumentId)) {
+                throw new AuraHandledException('Invalid document ID');
+            }
+            delete [SELECT Id FROM ContentDocument WHERE Id = :contentDocumentId LIMIT 1];
+        } catch (Exception e) {
+            throw new AuraHandledException('Error deleting file: ' + e.getMessage());
+        }
     }
 }
